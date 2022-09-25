@@ -35,14 +35,14 @@ private:
 	/*
 	 * 온라인 서브시스템
 	 */
-	int32 NumPublicConnections{ 4 };
-	FString MatchType{ TEXT("FreeForAll") };
-	FString PathToLobby{ TEXT("") };
-
 	IOnlineSessionPtr SessionInterface;
 	TSharedPtr<class FOnlineSessionSearch> SessionSearch;
 
 public:
+	int32 NumPublicConnections{ 4 };
+	FString MatchType{ TEXT("FreeForAll") };
+	FString PathToLobby{ TEXT("") };
+
 	UFUNCTION(Exec)
 	void Host(FString SessionName);
 	UFUNCTION(Exec)
