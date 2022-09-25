@@ -60,6 +60,8 @@ void ABustersCharacter::SetupPlayerInputComponent(class UInputComponent* PlayerI
 	check(PlayerInputComponent);
 	PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &ACharacter::Jump);
 	PlayerInputComponent->BindAction("Jump", IE_Released, this, &ACharacter::StopJumping);
+	//PlayerInputComponent->BindAction("Fire", IE_Pressed, this, &ACharacter::Jump);
+	//PlayerInputComponent->BindAction("Aim", IE_Released, this, &ACharacter::StopJumping);
 
 	PlayerInputComponent->BindAxis("Move Forward / Backward", this, &ABustersCharacter::MoveForward);
 	PlayerInputComponent->BindAxis("Move Right / Left", this, &ABustersCharacter::MoveRight);
@@ -71,20 +73,7 @@ void ABustersCharacter::SetupPlayerInputComponent(class UInputComponent* PlayerI
 	PlayerInputComponent->BindAxis("Turn Right / Left Gamepad", this, &ABustersCharacter::TurnAtRate);
 	PlayerInputComponent->BindAxis("Look Up / Down Mouse", this, &APawn::AddControllerPitchInput);
 	PlayerInputComponent->BindAxis("Look Up / Down Gamepad", this, &ABustersCharacter::LookUpAtRate);
-
-	// handle touch devices
-	PlayerInputComponent->BindTouch(IE_Pressed, this, &ABustersCharacter::TouchStarted);
-	PlayerInputComponent->BindTouch(IE_Released, this, &ABustersCharacter::TouchStopped);
-}
-
-void ABustersCharacter::TouchStarted(ETouchIndex::Type FingerIndex, FVector Location)
-{
-	Jump();
-}
-
-void ABustersCharacter::TouchStopped(ETouchIndex::Type FingerIndex, FVector Location)
-{
-	StopJumping();
+	
 }
 
 void ABustersCharacter::TurnAtRate(float Rate)
