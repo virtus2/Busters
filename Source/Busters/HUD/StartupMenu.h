@@ -28,9 +28,9 @@ class BUSTERS_API UStartupMenu : public UUserWidget
 
 public:
 	UStartupMenu(const FObjectInitializer& ObjectInitializer);
-	// 블루프린트에서 호출하는 메뉴 시작 함수
-	UFUNCTION(BlueprintCallable, Category = Widget)
-	void MenuSetup(int32 NumberOfPublicConnections = 4, FString TypeOfMatch = FString(TEXT("FreeForAll")), FString LobbyPath = FString(TEXT("/Game/Maps/StartingMap")));
+
+	UFUNCTION()
+	void MenuSetup();
 protected:
 	virtual bool Initialize() override;
 	virtual void OnLevelRemovedFromWorld(ULevel* InLevel, UWorld* InWorld) override;
@@ -46,12 +46,11 @@ private:
 	UButton* QuitButton;
 	UPROPERTY(meta = (BindWidget))
 	UButton* BackButton;
-
-
+	
+private:
 	/*
 	 * 세션 스크롤 박스
 	 */
-private:
 	UPROPERTY(meta = (BindWidget))
 	class UTextBlock* LoadingText;
 	UPROPERTY(meta = (BindWidget))
@@ -65,30 +64,34 @@ private:
 	TSubclassOf<class UUserWidget> SessionScrollBoxItemClass;
 public:
 	UFUNCTION()
-		void SelectSessionItem(uint32 Index);
-
+	void SelectSessionItem(uint32 Index);
+	UFUNCTION()
+	void SetSessionScrollBox(TArray<FSessionData>& SessionData);
+	
+private:
 	/*
 	 * 버튼 온클릭 함수
 	 */
-private:
 	UFUNCTION()
 	void JoinButtonClicked();
 	UFUNCTION()
 	void HostButtonClicked();
 	UFUNCTION()
 	void QuitButtonClicked();
-
 	UFUNCTION()
 	void OpenSessionScrollBoxMenu();
 	UFUNCTION()
 	void OpenStartupMenu();
 
+	
+private:
 	/*
 	 * 온라인 서브시스템
 	 */
-private:
+	UPROPERTY()
+	class UBustersGameInstance* BustersGameInstance;
 
 public:
-	UFUNCTION()
-		void SetSessionScrollBox(TArray<FSessionData>& SessionData);
+	FORCEINLINE void SetBustersGameInstance(UBustersGameInstance* Instance) { BustersGameInstance = Instance; }
+	
 };

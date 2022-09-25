@@ -6,6 +6,7 @@
 #include "Blueprint/UserWidget.h"
 #include "Components/Button.h"
 #include "SessionScrollBoxItem.h"
+#include "Busters/BustersGameInstance.h"
 #include "Components/ScrollBox.h"
 #include "Components/TextBlock.h"
 #include "Components/WidgetSwitcher.h"
@@ -17,7 +18,7 @@ UStartupMenu::UStartupMenu(const FObjectInitializer& ObjectInitializer) : Super(
 		SessionScrollBoxItemClass = SessionScrollBoxItemBPClass.Class;
 }
 
-void UStartupMenu::MenuSetup(int32 NumberOfPublicConnections, FString TypeOfMatch, FString LobbyPath)
+void UStartupMenu::MenuSetup()
 {
 	AddToViewport();
 	SetVisibility(ESlateVisibility::Visible);
@@ -37,23 +38,6 @@ void UStartupMenu::MenuSetup(int32 NumberOfPublicConnections, FString TypeOfMatc
 			PlayerController->SetShowMouseCursor(true);
 		}
 	}
-
-	/*
-	// 온라인 서브시스템
-	NumPublicConnections = NumberOfPublicConnections;
-	MatchType = TypeOfMatch;
-	PathToLobby = FString::Printf(TEXT("%s?listen"), *LobbyPath);
-
-	IOnlineSubsystem* Subsystem = IOnlineSubsystem::Get();
-	if(Subsystem)
-	{
-		SessionInterface = Subsystem->GetSessionInterface();
-		if(SessionInterface.IsValid())
-		{
-			UE_LOG(LogTemp, Warning, TEXT("SessionInterface found!"));
-		}
-	}
-	*/
 }
 
 bool UStartupMenu::Initialize()
@@ -115,12 +99,10 @@ void UStartupMenu::JoinButtonClicked()
 
 void UStartupMenu::HostButtonClicked()
 {
-	/*
 	if (BustersGameInstance)
 	{
 		BustersGameInstance->Host("Game Session");
 	}
-	*/
 }
 
 void UStartupMenu::QuitButtonClicked()
@@ -155,12 +137,11 @@ void UStartupMenu::OpenSessionScrollBoxMenu()
 			LoadingText->SetVisibility(ESlateVisibility::Visible);
 		}
 
-		/*
+		
 		if (BustersGameInstance)
 		{
 			BustersGameInstance->RefreshServerList();
 		}
-		*/
 	}
 }
 
@@ -176,11 +157,11 @@ void UStartupMenu::SetSessionScrollBox(TArray<FSessionData>& SessionData)
 		USessionScrollBoxItem* Item = CreateWidget<USessionScrollBoxItem>(World, SessionScrollBoxItemClass);
 		if (Item == nullptr) return;
 
-		/*
+		
 		Item->SessionNameText->SetText(FText::FromString(Data.Name));
 		Item->HostNameText->SetText(FText::FromString(Data.HostUserName));
 		Item->SessionNameText->SetText(FText::FromString(Data.Name));
-		*/
+		
 		SessionScrollBox->AddChild(Item);
 	}
 
