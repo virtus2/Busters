@@ -74,6 +74,7 @@ Plugins/*/Intermediate/*
 DerivedDataCache/*
 
 # Epic games market place assets
+Assets/
 Content/Assets/Hangar/
 Content/AnimStarterPack/
 Content/Assets/Characters/SWAT/
