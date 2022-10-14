@@ -6,7 +6,7 @@ public class Busters : ModuleRules
 {
 	public Busters(ReadOnlyTargetRules Target) : base(Target)
 	{
-		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
+        PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
 
 		PublicDependencyModuleNames.AddRange(new string[]
         {
@@ -14,10 +14,21 @@ public class Busters : ModuleRules
             "CoreUObject", 
             "Engine", 
             "InputCore", 
-            "HeadMountedDisplay",
+            "NetCore",
+            "PhysicsCore",
+            "GameplayTags",
+            "AnimGraphRuntime",
+            "ControlRig",
+            "RigVM",
+            "Niagara",
             "UMG",
+            "EnhancedInput",
             "OnlineSubsystem",
-            "OnlineSubsystemSteam"
+            "OnlineSubsystemSteam",
+            "ALS",
+            "ALSCamera",
+            "ALSEditor",
+            "ALSExtras",
         });
 	}
 }
