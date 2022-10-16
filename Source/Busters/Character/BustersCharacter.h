@@ -14,6 +14,7 @@ class USkeletalMeshComponent;
 class UInputMappingContext;
 class UInputAction;
 class AWeapon;
+class UCurveVector;
 struct FInputActionValue;
 /**
  * 
@@ -82,16 +83,39 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Settings|Busters Character", Meta = (ClampMin = 0, ForceUnits = "x"))
 	float LookRightMouseSensitivity{ 3.0f };
 	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Settings|Busters Character")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Settings|Busters Character|ADS")
 	float SmoothCameraSpeed = 5.0f;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Settings|Busters Character")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Settings|Busters Character|ADS")
 	float SmoothCameraTimeThreshold = 0.5f;
 	float SmoothCameraCurrentTime = 0.f;
-	
+
+	float FieldOfView = 90.f;
 	bool bADS = false;
 	bool bDesiredADS = false;
-	float FieldOfView = 90.f;
+
+	// Sway
+	FRotator SwayFinalRotation;
+	FRotator SwayInitialRotation;
+	
+	// 유저가 마우스를 이용해 화면을 회전시킬 때 총을 움직여주는 Sway 관련
+	float SwayPitch = 0.f;
+	float SwayYaw = 0.f;
+	FVector SwayForward{0.f, 0.f, 0.f};
+	FVector SwayRight{ 0.f, 0.f, 0.f };
+
+	// 캐릭터가 이동할 때 총을 움직여주는  Sway 관련
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Settings|Busters Character|Sway")
+	TObjectPtr<UCurveVector> SwayMovingVectorCurve;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Settings|Busters Character|Sway")
+	float SwayMovingSpeed = 2.5f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Settings|Busters Character|Sway")
+	float SwayMovingRange = 10.f;
+	
+	float SwayMovingTime = 0.f;
+
+
 
 public:
 	ABustersCharacter();
@@ -130,6 +154,9 @@ private:
 private:
 	void ToADSCamera(bool bToADS);
 	void SmoothADSCamera(float DeltaTime);
+
+	void WeaponSway(float DeltaTime);
+	void MovingSway(float DeltaTime);
 
 public:
 	void EquipWeapon(TObjectPtr<AWeapon> WeaponToEquip);

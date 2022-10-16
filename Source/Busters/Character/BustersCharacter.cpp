@@ -11,6 +11,7 @@
 #include "Camera/CameraComponent.h"
 #include "Components/ArrowComponent.h"
 #include "Components/CapsuleComponent.h"
+#include "Curves/CurveVector.h"
 #include "Engine/LocalPlayer.h"
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/SpringArmComponent.h"
@@ -87,6 +88,8 @@ void ABustersCharacter::Tick(float DeltaSeconds)
 	Super::Tick(DeltaSeconds);
 
 	SmoothADSCamera(DeltaSeconds);
+	WeaponSway(DeltaSeconds);
+	MovingSway(DeltaSeconds);
 }
 
 void ABustersCharacter::SetupPlayerInputComponent(UInputComponent* Input)
@@ -113,7 +116,9 @@ void ABustersCharacter::InputLookMouse(const FInputActionValue& ActionValue)
 
 	AddControllerPitchInput(Value.Y * LookUpMouseSensitivity);
 	AddControllerYawInput(Value.X * LookRightMouseSensitivity);
-	
+
+	SwayPitch = Value.Y; // Up
+	SwayYaw = Value.X; // Left
 }
 
 void ABustersCharacter::InputLook(const FInputActionValue& ActionValue)
@@ -129,6 +134,9 @@ void ABustersCharacter::InputMove(const FInputActionValue& ActionValue)
 	const auto RightDirection{ UAlsMath::PerpendicularCounterClockwiseXY(ForwardDirection) };
 
 	AddMovementInput(ForwardDirection * Value.Y + RightDirection * Value.X);
+
+	SwayForward = ForwardDirection * Value.Y;
+	SwayRight = RightDirection * Value.X;
 }
 
 void ABustersCharacter::InputRun(const FInputActionValue& ActionValue)
@@ -293,6 +301,74 @@ void ABustersCharacter::SmoothADSCamera(float DeltaTime)
 	}
 }
 
+void ABustersCharacter::WeaponSway(float DeltaTime)
+{
+	bool check = IsValid(CombatComponent) &&
+		IsValid(CombatComponent->GetWeapon()) &&
+		CombatComponent->GetWeapon()->GetWeaponType() != EWeaponType::EWT_Default &&
+		GetVelocity().Length() >= 0.f &&
+		bADS;
+
+	if (check)
+	{
+		float MaxSwayDegree = CombatComponent->GetWeapon()->GetMaxSwayDegree();
+		float SwaySpeed = CombatComponent->GetWeapon()->GetSwaySpeed();
+
+		float Turn = SwayYaw * MaxSwayDegree;
+		float LookUp = SwayPitch * MaxSwayDegree;
+
+		SwayFinalRotation.Roll = LookUp;
+		SwayFinalRotation.Pitch = Turn;
+		SwayFinalRotation.Yaw = Turn;
+
+		FRotator TargetRotation(
+			SwayInitialRotation.Pitch - SwayFinalRotation.Pitch,
+			SwayInitialRotation.Yaw + SwayFinalRotation.Yaw,
+			SwayInitialRotation.Roll + SwayFinalRotation.Roll
+		);
+
+		if (IsValid(ADSSkeletalMesh))
+		{
+			FRotator ResultRotation = UKismetMathLibrary::RInterpTo(ADSSkeletalMesh->GetRelativeRotation(), TargetRotation, DeltaTime, SwaySpeed);
+			ResultRotation.Roll = UKismetMathLibrary::FClamp(ResultRotation.Roll, -MaxSwayDegree, MaxSwayDegree);
+			ResultRotation.Pitch = UKismetMathLibrary::FClamp(ResultRotation.Pitch, -MaxSwayDegree, MaxSwayDegree);
+			ResultRotation.Yaw = UKismetMathLibrary::FClamp(ResultRotation.Yaw, -MaxSwayDegree + SwayInitialRotation.Yaw, MaxSwayDegree + SwayInitialRotation.Yaw);
+
+			ADSSkeletalMesh->SetRelativeRotation(ResultRotation);
+		}
+	}
+}
+
+void ABustersCharacter::MovingSway(float DeltaTime)
+{
+	if (!bADS) return;
+
+	double Speed = GetVelocity().Length();
+	SwayMovingTime += DeltaTime;
+	if (Speed <= 0.1f)
+	{
+		SwayMovingTime = 0.f;
+		return;
+	}
+	if(IsValid(SwayMovingVectorCurve))
+	{
+		FVector NewVector = SwayMovingVectorCurve->GetVectorValue(SwayMovingTime);
+		float Roll = UKismetMathLibrary::NormalizeToRange(NewVector.X * Speed, -SwayMovingRange, SwayMovingRange);
+		float Pitch = UKismetMathLibrary::NormalizeToRange(NewVector.Y * Speed, -SwayMovingRange, SwayMovingRange);
+		float Yaw = UKismetMathLibrary::NormalizeToRange(NewVector.Z * Speed, -SwayMovingRange, SwayMovingRange);
+
+		SwayFinalRotation.Roll = SwayInitialRotation.Roll + Roll;
+		SwayFinalRotation.Pitch = SwayInitialRotation.Pitch + Pitch;
+		SwayFinalRotation.Yaw = SwayInitialRotation.Yaw + Yaw;
+
+		if(IsValid(ADSSkeletalMesh))
+		{
+			FRotator ResultRotation = UKismetMathLibrary::RInterpTo(ADSSkeletalMesh->GetRelativeRotation(), SwayFinalRotation, DeltaTime, SwayMovingSpeed);
+			ADSSkeletalMesh->SetRelativeRotation(ResultRotation);
+		}
+	}
+}
+
 void ABustersCharacter::EquipWeapon(TObjectPtr<AWeapon> WeaponToEquip)
 {
 	if(IsValid(CombatComponent))
@@ -313,6 +389,7 @@ void ABustersCharacter::EquipWeapon(TObjectPtr<AWeapon> WeaponToEquip)
 
 				ADSSkeletalMesh->SetSkeletalMesh(WeaponToEquip->GetSkeletalMesh()->SkeletalMesh);
 				ADSSkeletalMesh->SetRelativeTransform(WeaponToEquip->GetADSTransform());
+				SwayInitialRotation = ADSSkeletalMesh->GetRelativeRotation();
 
 				break;
 			default:

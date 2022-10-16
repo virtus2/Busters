@@ -43,6 +43,13 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Weapon")
 	EWeaponType WeaponType;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Weapon")
+	float MaxSwayDegree = 2.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon")
+	float SwaySpeed = 4.f;
+
 	
 
 protected:
@@ -56,5 +63,7 @@ public:
 	inline TObjectPtr<USkeletalMeshComponent> GetSkeletalMesh() { return SkeletalMesh; };
 	inline FTransform GetADSTransform() { return ADSTransform; };
 	inline EWeaponType GetWeaponType() { return WeaponType; };
+	inline float GetMaxSwayDegree() { return MaxSwayDegree; };
+	inline float GetSwaySpeed() { return SwaySpeed; };
 
 };
