@@ -7,6 +7,7 @@
 #include "AlsCharacterMovementComponent.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
+#include "Busters/Weapon/Weapon.h"
 #include "Camera/CameraComponent.h"
 #include "Components/ArrowComponent.h"
 #include "Components/CapsuleComponent.h"
@@ -18,6 +19,9 @@
 
 ABustersCharacter::ABustersCharacter()
 {
+	CombatComponent = CreateDefaultSubobject<UCombatComponent>("CombatComponent");
+	CombatComponent->SetIsReplicated(true);
+
 	OverlaySkeletalMesh = CreateDefaultSubobject<USkeletalMeshComponent>("OverlaySkeletalMesh");
 	OverlaySkeletalMesh->SetupAttachment(GetMesh());
 	
@@ -33,6 +37,7 @@ ABustersCharacter::ABustersCharacter()
 
 	ThirdPersonCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("ThirdPersonCamera"));
 	ThirdPersonCamera->SetupAttachment(ThirdPersonSpringArm);
+	FieldOfView = ThirdPersonCamera->FieldOfView;
 
 	ThirdPersonArrow = CreateDefaultSubobject<UArrowComponent>(TEXT("ThirdPersonArrow"));
 	ThirdPersonArrow->SetupAttachment(ThirdPersonSpringArm);
@@ -171,6 +176,8 @@ void ABustersCharacter::InputAim(const FInputActionValue& ActionValue)
 void ABustersCharacter::InputADS(const FInputActionValue& ActionValue)
 {
 	UE_LOG(LogTemp, Warning, TEXT("InputADS called"));
+	// if (IsValid(CombatComponent) && CombatComponent->GetWeapon().IsNull()) return;
+
 	if (GetDesiredGait() == AlsGaitTags::Running) SetDesiredGait(AlsGaitTags::Walking);
 
 	if (bADS) ToADSCamera(false);
@@ -182,6 +189,10 @@ void ABustersCharacter::InputFire(const FInputActionValue& ActionValue)
 	if(ActionValue.Get<bool>())
 	{
 		UE_LOG(LogTemp, Warning, TEXT("True"));
+		if(IsValid(CombatComponent))
+		{
+
+		}
 	}
 	else
 	{
@@ -236,6 +247,9 @@ void ABustersCharacter::SmoothADSCamera(float DeltaTime)
 			FVector NewLocation = UKismetMathLibrary::VInterpTo(ThirdPersonCamera->GetComponentLocation(), ADSCamera->GetComponentLocation(), DeltaTime, SmoothCameraSpeed);
 			ThirdPersonCamera->SetWorldLocation(NewLocation);
 
+			float NewFOV = UKismetMathLibrary::FInterpTo(ThirdPersonCamera->FieldOfView, ADSCamera->FieldOfView, DeltaTime, SmoothCameraSpeed);
+			ThirdPersonCamera->SetFieldOfView(NewFOV);
+
 			if (UKismetMathLibrary::VSize(ThirdPersonCamera->GetComponentLocation() - ADSCamera->GetComponentLocation()) < 0.5f || 
 				SmoothCameraCurrentTime >= SmoothCameraTimeThreshold)
 			{
@@ -262,12 +276,16 @@ void ABustersCharacter::SmoothADSCamera(float DeltaTime)
 			FVector NewLocation = UKismetMathLibrary::VInterpTo(ThirdPersonCamera->GetComponentLocation(), ThirdPersonArrow->GetComponentLocation(), DeltaTime, SmoothCameraSpeed);
 			ThirdPersonCamera->SetWorldLocation(NewLocation);
 
+			float NewFOV = UKismetMathLibrary::FInterpTo(ThirdPersonCamera->FieldOfView, FieldOfView, DeltaTime, SmoothCameraSpeed);
+			ThirdPersonCamera->SetFieldOfView(NewFOV);
+
 			if (UKismetMathLibrary::VSize(ThirdPersonCamera->GetComponentLocation() - ThirdPersonArrow->GetComponentLocation()) < 0.5f ||
 				SmoothCameraCurrentTime >= SmoothCameraTimeThreshold)
 			{
 				// 변경 완료
 				UE_LOG(LogTemp, Warning, TEXT("ADS off finished"));
 
+				ThirdPersonCamera->SetFieldOfView(FieldOfView);
 				SmoothCameraCurrentTime = 0.f;
 				bADS = false;
 			}
@@ -275,10 +293,32 @@ void ABustersCharacter::SmoothADSCamera(float DeltaTime)
 	}
 }
 
-void ABustersCharacter::EquipWeapon(AWeapon* WeaponToEquip)
+void ABustersCharacter::EquipWeapon(TObjectPtr<AWeapon> WeaponToEquip)
 {
 	if(IsValid(CombatComponent))
 	{
+		WeaponToEquip->SetOwner(this);
 		CombatComponent->SetWeapon(WeaponToEquip);
+		if(WeaponToEquip)
+		{
+			EWeaponType WeaponType = WeaponToEquip->GetWeaponType();
+			switch(WeaponType)
+			{
+			case EWeaponType::EWT_Pistol:
+				SetOverlayMode(AlsOverlayModeTags::PistolTwoHanded);
+				break;
+			case EWeaponType::EWT_Rifle:
+				SetOverlayMode(AlsOverlayModeTags::M4);
+				OverlaySkeletalMesh->SetSkeletalMesh(WeaponToEquip->GetSkeletalMesh()->SkeletalMesh);
+
+				ADSSkeletalMesh->SetSkeletalMesh(WeaponToEquip->GetSkeletalMesh()->SkeletalMesh);
+				ADSSkeletalMesh->SetRelativeTransform(WeaponToEquip->GetADSTransform());
+
+				break;
+			default:
+				SetOverlayMode(AlsOverlayModeTags::Default);
+				break;
+			}
+		}
 	}
 }

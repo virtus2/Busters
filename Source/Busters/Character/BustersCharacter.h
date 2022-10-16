@@ -88,10 +88,10 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Settings|Busters Character")
 	float SmoothCameraTimeThreshold = 0.5f;
 	float SmoothCameraCurrentTime = 0.f;
-
-	UPROPERTY(BlueprintReadWrite)
+	
 	bool bADS = false;
 	bool bDesiredADS = false;
+	float FieldOfView = 90.f;
 
 public:
 	ABustersCharacter();
@@ -131,9 +131,7 @@ private:
 	void ToADSCamera(bool bToADS);
 	void SmoothADSCamera(float DeltaTime);
 
-	void EquipWeapon(AWeapon* WeaponToEquip);
-
-
-	
+public:
+	void EquipWeapon(TObjectPtr<AWeapon> WeaponToEquip);
 
 };

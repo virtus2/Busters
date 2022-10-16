@@ -31,6 +31,6 @@ public:
 
 	FTransform GetWeaponADSTransform();
 
-
+	inline TObjectPtr<AWeapon> GetWeapon() { return Weapon; };
 	inline void SetWeapon(TObjectPtr<AWeapon> WeaponToSet) { Weapon = WeaponToSet; };
 };
