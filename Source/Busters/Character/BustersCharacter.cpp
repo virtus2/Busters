@@ -110,6 +110,21 @@ void ABustersCharacter::SetupPlayerInputComponent(UInputComponent* Input)
 	}
 }
 
+void ABustersCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+}
+
+void ABustersCharacter::PostInitializeComponents()
+{
+	Super::PostInitializeComponents();
+
+	if(IsValid(CombatComponent))
+	{
+		CombatComponent->Character = this;
+	}
+}
+
 void ABustersCharacter::InputLookMouse(const FInputActionValue& ActionValue)
 {
 	const auto Value{ ActionValue.Get<FVector2D>() };
@@ -168,7 +183,7 @@ void ABustersCharacter::InputJump(const FInputActionValue& ActionValue)
 		}
 
 		Jump();
-		ToADSCamera(false);
+		if(bADS) ToADSCamera(false);
 	}
 	else
 	{
@@ -369,26 +384,147 @@ void ABustersCharacter::MovingSway(float DeltaTime)
 	}
 }
 
-void ABustersCharacter::EquipWeapon(TObjectPtr<AWeapon> WeaponToEquip)
+void ABustersCharacter::BuyWeapon(TSubclassOf<AWeapon> BoughtWeapon)
 {
-	if(IsValid(CombatComponent))
+	if(HasAuthority())
 	{
-		WeaponToEquip->SetOwner(this);
-		CombatComponent->SetWeapon(WeaponToEquip);
-		if(WeaponToEquip)
+		// 서버에서 무기를 구매했을경우
+		// 서버에서 무기를 생성해 구매한 캐릭터의 CombatComponent에 할당해준다.
+		// 이는 Replicate되어 클라이언트에게도 갱신된다.
+		TObjectPtr<UWorld> World = GetWorld();
+		if (IsValid(World))
 		{
-			EWeaponType WeaponType = WeaponToEquip->GetWeaponType();
-			switch(WeaponType)
+			TObjectPtr<AWeapon> NewWeapon = World->SpawnActor<AWeapon>(BoughtWeapon);
+			if (IsValid(NewWeapon) && IsValid(CombatComponent))
+			{
+				NewWeapon->SetOwner(this);
+				CombatComponent->SetWeapon(NewWeapon);
+				UpdateWeaponMesh();
+			}
+		}
+	}
+	else
+	{
+		// 클라이언트에서 무기를 구매했을경우
+		// 서버 RPC인 ServerBuyWeapon을 호출한다.
+		ServerBuyWeapon(BoughtWeapon);
+	}
+}
+
+void ABustersCharacter::ServerBuyWeapon_Implementation(TSubclassOf<AWeapon> BoughtWeapon)
+{
+	// 서버에서 무기를 생성해 구매한 캐릭터의 CombatComponent에 할당해준다.
+	// 이는 Replicate되어 클라이언트에게도 갱신된다.
+	TObjectPtr<UWorld> World = GetWorld();
+	if (IsValid(World))
+	{
+		TObjectPtr<AWeapon> NewWeapon = World->SpawnActor<AWeapon>(BoughtWeapon);
+		if (IsValid(NewWeapon) && IsValid(CombatComponent))
+		{
+			NewWeapon->SetOwner(this);
+			CombatComponent->SetWeapon(NewWeapon);
+			UpdateWeaponMesh();
+		}
+	}
+}
+
+void ABustersCharacter::UpdateWeaponMesh()
+{
+	if (IsValid(CombatComponent) && IsValid(CombatComponent->GetWeapon()))
+	{
+		if (IsValid(OverlaySkeletalMesh) && IsValid(ADSSkeletalMesh))
+		{
+			EWeaponType WeaponType = CombatComponent->GetWeapon()->GetWeaponType();
+			switch (WeaponType)
 			{
 			case EWeaponType::EWT_Pistol:
 				SetOverlayMode(AlsOverlayModeTags::PistolTwoHanded);
 				break;
 			case EWeaponType::EWT_Rifle:
 				SetOverlayMode(AlsOverlayModeTags::M4);
-				OverlaySkeletalMesh->SetSkeletalMesh(WeaponToEquip->GetSkeletalMesh()->SkeletalMesh);
+				OverlaySkeletalMesh->SetSkeletalMesh(CombatComponent->GetWeapon()->GetSkeletalMesh()->SkeletalMesh);
+				ADSSkeletalMesh->SetSkeletalMesh(CombatComponent->GetWeapon()->GetSkeletalMesh()->SkeletalMesh);
+				ADSSkeletalMesh->SetRelativeTransform(CombatComponent->GetWeapon()->GetADSTransform());
+				SwayInitialRotation = ADSSkeletalMesh->GetRelativeRotation();
 
-				ADSSkeletalMesh->SetSkeletalMesh(WeaponToEquip->GetSkeletalMesh()->SkeletalMesh);
-				ADSSkeletalMesh->SetRelativeTransform(WeaponToEquip->GetADSTransform());
+				break;
+			default:
+				SetOverlayMode(AlsOverlayModeTags::Default);
+				break;
+
+			}
+		}
+	}
+}
+
+void ABustersCharacter::EquipWeapon(TSubclassOf<AWeapon> WeaponToEquip)
+{
+	if(IsValid(CombatComponent))
+	{
+		// 서버에서만 실행된다.
+		if(HasAuthority())
+		{
+			TObjectPtr<UWorld> World = GetWorld();
+			if (IsValid(World))
+			{
+				UKismetSystemLibrary::PrintString(World, "Server Equip");
+				TObjectPtr<AWeapon> NewWeapon = World->SpawnActor<AWeapon>(WeaponToEquip);
+				if (IsValid(NewWeapon) && IsValid(CombatComponent) && IsValid(OverlaySkeletalMesh) && IsValid(ADSSkeletalMesh))
+				{
+					CombatComponent->SetWeapon(NewWeapon);
+					NewWeapon->SetOwner(this);
+					EWeaponType WeaponType = NewWeapon->GetWeaponType();
+					switch (WeaponType)
+					{
+					case EWeaponType::EWT_Pistol:
+						SetOverlayMode(AlsOverlayModeTags::PistolTwoHanded);
+						break;
+					case EWeaponType::EWT_Rifle:
+						SetOverlayMode(AlsOverlayModeTags::M4);
+						OverlaySkeletalMesh->SetSkeletalMesh(NewWeapon->GetSkeletalMesh()->SkeletalMesh);
+
+						ADSSkeletalMesh->SetSkeletalMesh(NewWeapon->GetSkeletalMesh()->SkeletalMesh);
+						ADSSkeletalMesh->SetRelativeTransform(NewWeapon->GetADSTransform());
+						SwayInitialRotation = ADSSkeletalMesh->GetRelativeRotation();
+
+						break;
+					default:
+						SetOverlayMode(AlsOverlayModeTags::Default);
+						break;
+					}
+				}
+			}
+		}
+		else
+		{
+			ServerEquipWeapon(WeaponToEquip);
+		}
+	}
+}
+
+void ABustersCharacter::ServerEquipWeapon_Implementation(TSubclassOf<AWeapon> WeaponToEquip)
+{
+	TObjectPtr<UWorld> World = GetWorld();
+	if (IsValid(World))
+	{
+		UKismetSystemLibrary::PrintString(World, "Client Equip");
+		TObjectPtr<AWeapon> NewWeapon = World->SpawnActor<AWeapon>(WeaponToEquip);
+		if (IsValid(NewWeapon) && IsValid(CombatComponent) && IsValid(OverlaySkeletalMesh) && IsValid(ADSSkeletalMesh))
+		{
+			CombatComponent->SetWeapon(NewWeapon);
+			NewWeapon->SetOwner(this);
+			EWeaponType WeaponType = NewWeapon->GetWeaponType();
+			switch (WeaponType)
+			{
+			case EWeaponType::EWT_Pistol:
+				SetOverlayMode(AlsOverlayModeTags::PistolTwoHanded);
+				break;
+			case EWeaponType::EWT_Rifle:
+				SetOverlayMode(AlsOverlayModeTags::M4);
+				OverlaySkeletalMesh->SetSkeletalMesh(NewWeapon->GetSkeletalMesh()->SkeletalMesh);
+
+				ADSSkeletalMesh->SetSkeletalMesh(NewWeapon->GetSkeletalMesh()->SkeletalMesh);
+				ADSSkeletalMesh->SetRelativeTransform(NewWeapon->GetADSTransform());
 				SwayInitialRotation = ADSSkeletalMesh->GetRelativeRotation();
 
 				break;
@@ -398,4 +534,5 @@ void ABustersCharacter::EquipWeapon(TObjectPtr<AWeapon> WeaponToEquip)
 			}
 		}
 	}
+
 }

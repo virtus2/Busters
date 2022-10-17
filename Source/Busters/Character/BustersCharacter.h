@@ -130,6 +130,10 @@ protected:
 protected:
 	virtual void SetupPlayerInputComponent(UInputComponent* Input) override;
 
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
+	virtual void PostInitializeComponents() override;
+
 private:
 	void InputLookMouse(const FInputActionValue& ActionValue);
 
@@ -159,6 +163,18 @@ private:
 	void MovingSway(float DeltaTime);
 
 public:
-	void EquipWeapon(TObjectPtr<AWeapon> WeaponToEquip);
+	UFUNCTION()
+	void BuyWeapon(TSubclassOf<AWeapon> BoughtWeapon);
+	UFUNCTION(Server, Reliable)
+	void ServerBuyWeapon(TSubclassOf<AWeapon> BoughtWeapon);
+
+	UFUNCTION()
+	void UpdateWeaponMesh();
+
+	UFUNCTION()
+	void EquipWeapon(TSubclassOf<AWeapon> WeaponToEquip);
+
+	UFUNCTION(Server, Reliable)
+	void ServerEquipWeapon(TSubclassOf<AWeapon> WeaponToEquip);
 
 };

@@ -79,11 +79,10 @@ void UGunShop::BuyAR()
 	if(IsValid(PlayerController))
 	{
 		TObjectPtr<ABustersCharacter> Character = Cast<ABustersCharacter>(PlayerController->GetCharacter());
-		TObjectPtr<UWorld> World = GetWorld();
-		if(IsValid(World) && IsValid(Character))
+		if(IsValid(Character))
 		{
-			TObjectPtr<AWeapon> NewWeapon = World->SpawnActor<AWeapon>(WeaponAR);
-			Character->EquipWeapon(NewWeapon);
+			// Character->EquipWeapon(WeaponAR);
+			Character->BuyWeapon(WeaponAR);
 		}
 	}
 }
@@ -94,11 +93,10 @@ void UGunShop::BuyAK()
 	if (IsValid(PlayerController))
 	{
 		TObjectPtr<ABustersCharacter> Character = Cast<ABustersCharacter>(PlayerController->GetCharacter());
-		TObjectPtr<UWorld> World = GetWorld();
-		if (IsValid(World) && IsValid(Character))
+		if (IsValid(Character))
 		{
-			TObjectPtr<AWeapon> NewWeapon = World->SpawnActor<AWeapon>(WeaponAK);
-			Character->EquipWeapon(NewWeapon);
+			// Character->EquipWeapon(WeaponAK);
+			Character->BuyWeapon(WeaponAK);
 		}
 	}
 }

@@ -36,6 +36,8 @@ void ABustersPlayerController::InputShop()
 	if(bShopping)
 	{
 		bShopping = false;
+		// GunShop 메뉴를 닫는건 BP_GunShop에서 처리된다.
+		// 이유: InputModeUIOnly에서 키보드 인풋이 EnhancedInput에 전달되지 않음
 	}
 	else
 	{
