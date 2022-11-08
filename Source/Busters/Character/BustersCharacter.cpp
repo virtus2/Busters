@@ -8,6 +8,7 @@
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "Busters/Weapon/Weapon.h"
+#include "Busters/Weapon/WeaponTypes.h"
 #include "Camera/CameraComponent.h"
 #include "Components/ArrowComponent.h"
 #include "Components/CapsuleComponent.h"
@@ -17,6 +18,7 @@
 #include "GameFramework/SpringArmComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetMathLibrary.h"
+#include "Net/UnrealNetwork.h"
 
 ABustersCharacter::ABustersCharacter()
 {
@@ -50,6 +52,9 @@ ABustersCharacter::ABustersCharacter()
 
 	ADSCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("ADSCamera"));
 	ADSCamera->SetupAttachment(SpringArm);
+
+	BaseMaxWalkSpeed = GetCharacterMovement()->MaxWalkSpeed;
+	BaseMaxWalkSpeedCrouched = GetCharacterMovement()->MaxWalkSpeedCrouched;
 	
 }
 
@@ -101,7 +106,7 @@ void ABustersCharacter::SetupPlayerInputComponent(UInputComponent* Input)
 	{
 		EnhancedInput->BindAction(LookMouseAction, ETriggerEvent::Triggered, this, &ThisClass::InputLookMouse);
 		EnhancedInput->BindAction(MoveAction, ETriggerEvent::Triggered, this, &ThisClass::InputMove);
-		EnhancedInput->BindAction(RunAction, ETriggerEvent::Triggered, this, &ThisClass::InputRun);
+		EnhancedInput->BindAction(SprintAction, ETriggerEvent::Triggered, this, &ThisClass::InputSprint);
 		EnhancedInput->BindAction(CrouchAction, ETriggerEvent::Triggered, this, &ThisClass::InputCrouch);
 		EnhancedInput->BindAction(JumpAction, ETriggerEvent::Triggered, this, &ThisClass::InputJump);
 		EnhancedInput->BindAction(AimAction, ETriggerEvent::Triggered, this, &ThisClass::InputAim);
@@ -113,6 +118,7 @@ void ABustersCharacter::SetupPlayerInputComponent(UInputComponent* Input)
 void ABustersCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+	
 }
 
 void ABustersCharacter::PostInitializeComponents()
@@ -154,10 +160,39 @@ void ABustersCharacter::InputMove(const FInputActionValue& ActionValue)
 	SwayRight = RightDirection * Value.X;
 }
 
-void ABustersCharacter::InputRun(const FInputActionValue& ActionValue)
+void ABustersCharacter::InputWalk(const FInputActionValue& ActionValue)
 {
-	if (bADS) ToADSCamera(false);
-	SetDesiredGait(ActionValue.Get<bool>() ? AlsGaitTags::Running : AlsGaitTags::Walking);
+	if (GetDesiredGait() == AlsGaitTags::Walking)
+	{
+		SetDesiredGait(AlsGaitTags::Running);
+	}
+	else if (GetDesiredGait() == AlsGaitTags::Running)
+	{
+		SetDesiredGait(AlsGaitTags::Walking);
+	}
+}
+
+void ABustersCharacter::InputSprint(const FInputActionValue& ActionValue)
+{
+	if(ActionValue.Get<bool>())
+	{
+		if(bADS)
+		{
+			ToADSCamera(false);
+		}
+		SetDesiredGait(AlsGaitTags::Sprinting);
+	}
+	else
+	{
+		if(bADS)
+		{
+			SetDesiredGait(AlsGaitTags::Walking);
+		}
+		else
+		{
+			SetDesiredGait(AlsGaitTags::Running);
+		}
+	}
 }
 
 void ABustersCharacter::InputCrouch()
@@ -181,9 +216,11 @@ void ABustersCharacter::InputJump(const FInputActionValue& ActionValue)
 			SetDesiredStance(AlsStanceTags::Standing);
 			return;
 		}
-
+		if (bADS)
+		{
+			ToADSCamera(false);
+		}
 		Jump();
-		if(bADS) ToADSCamera(false);
 	}
 	else
 	{
@@ -193,39 +230,66 @@ void ABustersCharacter::InputJump(const FInputActionValue& ActionValue)
 
 void ABustersCharacter::InputAim(const FInputActionValue& ActionValue)
 {
-
+	UE_LOG(LogTemp, Warning, TEXT("InputAim Called %d"), ActionValue.Get<bool>());
+	if(ActionValue.Get<bool>())
+	{
+		SetDesiredAiming(true);
+		SetDesiredGait(AlsGaitTags::Walking);
+	}
+	else
+	{
+		SetDesiredAiming(false);
+		SetDesiredGait(AlsGaitTags::Running);
+	}
 }
 
 void ABustersCharacter::InputADS(const FInputActionValue& ActionValue)
 {
 	UE_LOG(LogTemp, Warning, TEXT("InputADS called"));
-	// if (IsValid(CombatComponent) && CombatComponent->GetWeapon().IsNull()) return;
-
-	if (GetDesiredGait() == AlsGaitTags::Running) SetDesiredGait(AlsGaitTags::Walking);
-
-	if (bADS) ToADSCamera(false);
-	else ToADSCamera(true);
+	/*
+	if (GetDesiredGait() == AlsGaitTags::Running || GetDesiredGait() == AlsGaitTags::Sprinting)
+	{
+		SetDesiredGait(AlsGaitTags::Walking);
+	}
+	else if (GetDesiredGait() == AlsGaitTags::Walking)
+	{
+		SetDesiredGait(AlsGaitTags::Running);
+	}
+	*/
+	if (bADS)
+	{
+		SetDesiredGait(AlsGaitTags::Running);
+		ToADSCamera(false);
+	}
+	else 
+	{
+		SetDesiredGait(AlsGaitTags::Walking);
+		ToADSCamera(true);
+	}
 }
 
 void ABustersCharacter::InputFire(const FInputActionValue& ActionValue)
 {
-	if(ActionValue.Get<bool>())
+	if(IsValid(CombatComponent))
 	{
-		UE_LOG(LogTemp, Warning, TEXT("True"));
-		if(IsValid(CombatComponent))
-		{
-
-		}
-	}
-	else
-	{
-		UE_LOG(LogTemp, Warning, TEXT("False"));
+		CombatComponent->FireButtonPressed(ActionValue.Get<bool>());
 	}
 }
 
 void ABustersCharacter::InputSwitchShoulder()
 {
+
 }
+
+void ABustersCharacter::OnFireWeapon()
+{
+	TObjectPtr<APlayerCameraManager> PlayerCameraManager = Cast<APlayerController>(GetController())->PlayerCameraManager;
+	if(IsValid(PlayerCameraManager) && IsValid(CameraShakeOnFireWeapon))
+	{
+		PlayerCameraManager->StartCameraShake(CameraShakeOnFireWeapon);
+	}
+}
+
 
 void ABustersCharacter::ToADSCamera(bool bToADS)
 {
@@ -236,11 +300,21 @@ void ABustersCharacter::ToADSCamera(bool bToADS)
 		UE_LOG(LogTemp, Warning, TEXT("ADS on"));
 
 		bDesiredADS = true;
-		SetViewMode(AlsViewModeTags::FirstPerson);
+		SetDesiredAiming(true);
+		//SetViewMode(AlsViewModeTags::FirstPerson);
 
-		if (IsValid(OverlaySkeletalMesh)) OverlaySkeletalMesh->SetVisibility(false);
-		if (GetMesh()) GetMesh()->SetVisibility(false);
-		if (IsValid(ADSSkeletalMesh)) ADSSkeletalMesh->SetVisibility(true);
+		if (IsValid(OverlaySkeletalMesh))
+		{
+			OverlaySkeletalMesh->SetVisibility(false);
+		}
+		if (GetMesh())
+		{
+			GetMesh()->SetVisibility(false);
+		}
+		if (IsValid(ADSSkeletalMesh))
+		{
+			ADSSkeletalMesh->SetVisibility(true);
+		}
 
 	}
 	else
@@ -249,13 +323,23 @@ void ABustersCharacter::ToADSCamera(bool bToADS)
 		UE_LOG(LogTemp, Warning, TEXT("ADS off"));
 
 		bDesiredADS = false;
+		SetDesiredAiming(false);
 		ADSCamera->SetActive(false);
 		ThirdPersonCamera->SetActive(true);
-		SetViewMode(AlsViewModeTags::ThirdPerson);
+		//SetViewMode(AlsViewModeTags::ThirdPerson);
 
-		if (IsValid(OverlaySkeletalMesh)) OverlaySkeletalMesh->SetVisibility(true);
-		if (GetMesh()) GetMesh()->SetVisibility(true);
-		if (IsValid(ADSSkeletalMesh)) ADSSkeletalMesh->SetVisibility(false);
+		if (IsValid(OverlaySkeletalMesh))
+		{
+			OverlaySkeletalMesh->SetVisibility(true);
+		}
+		if (GetMesh())
+		{
+			GetMesh()->SetVisibility(true);
+		}
+		if (IsValid(ADSSkeletalMesh))
+		{
+			ADSSkeletalMesh->SetVisibility(false);
+		}
 	}
 }
 
@@ -285,8 +369,10 @@ void ABustersCharacter::SmoothADSCamera(float DeltaTime)
 				ThirdPersonCamera->SetActive(false);
 				ADSCamera->SetActive(true);
 
-				if (IsValid(ADSSkeletalMesh)) ADSSkeletalMesh->SetVisibility(true);
-
+				if (IsValid(ADSSkeletalMesh))
+				{
+					ADSSkeletalMesh->SetVisibility(true);
+				}
 			}
 		}
 	}
@@ -321,7 +407,6 @@ void ABustersCharacter::WeaponSway(float DeltaTime)
 	bool check = IsValid(CombatComponent) &&
 		IsValid(CombatComponent->GetWeapon()) &&
 		CombatComponent->GetWeapon()->GetWeaponType() != EWeaponType::EWT_Default &&
-		GetVelocity().Length() >= 0.f &&
 		bADS;
 
 	if (check)
@@ -335,9 +420,9 @@ void ABustersCharacter::WeaponSway(float DeltaTime)
 		SwayFinalRotation.Roll = LookUp;
 		SwayFinalRotation.Pitch = Turn;
 		SwayFinalRotation.Yaw = Turn;
-
+		
 		FRotator TargetRotation(
-			SwayInitialRotation.Pitch - SwayFinalRotation.Pitch,
+			SwayInitialRotation.Pitch + SwayFinalRotation.Pitch,
 			SwayInitialRotation.Yaw + SwayFinalRotation.Yaw,
 			SwayInitialRotation.Roll + SwayFinalRotation.Roll
 		);
@@ -356,7 +441,10 @@ void ABustersCharacter::WeaponSway(float DeltaTime)
 
 void ABustersCharacter::MovingSway(float DeltaTime)
 {
-	if (!bADS) return;
+	if (!bADS)
+	{
+		return;
+	}
 
 	double Speed = GetVelocity().Length();
 	SwayMovingTime += DeltaTime;

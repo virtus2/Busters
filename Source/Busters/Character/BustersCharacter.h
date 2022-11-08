@@ -13,8 +13,10 @@ class UCameraComponent;
 class USkeletalMeshComponent;
 class UInputMappingContext;
 class UInputAction;
-class AWeapon;
+class UCameraShakeBase;
 class UCurveVector;
+class AWeapon;
+enum class EWeaponType : uint8;
 struct FInputActionValue;
 /**
  * 
@@ -23,7 +25,7 @@ UCLASS()
 class BUSTERS_API ABustersCharacter : public AAlsCharacter
 {
 	GENERATED_BODY()
-		
+
 protected:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite)
@@ -49,7 +51,7 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Busters Character")
 	TObjectPtr<USkeletalMeshComponent> ADSSkeletalMesh;
-	
+
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Settings|Busters Character")
 	TObjectPtr<UInputMappingContext> InputMappingContext;
 
@@ -61,6 +63,9 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Settings|Busters Character")
 	TObjectPtr<UInputAction> RunAction;
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Settings|Busters Character")
+	TObjectPtr<UInputAction> SprintAction;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Settings|Busters Character")
 	TObjectPtr<UInputAction> CrouchAction;
@@ -77,13 +82,26 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Settings|Busters Character")
 	TObjectPtr<UInputAction> FireAction;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Settings|Busters Character")
+	TSubclassOf<UCameraShakeBase> CameraShakeOnFireWeapon;
+
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Settings|Busters Character", Meta = (ClampMin = 0, ForceUnits = "x"))
 	float LookUpMouseSensitivity{ 3.0f };
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Settings|Busters Character", Meta = (ClampMin = 0, ForceUnits = "x"))
 	float LookRightMouseSensitivity{ 3.0f };
-	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Settings|Busters Character|ADS")
+
+	float BaseMaxWalkSpeed;
+	float BaseMaxWalkSpeedCrouched;
+	//
+	// ADS
+	//
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Settings|Busters Character|ADS")
+	float ADSMaxWalkSpeed;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Settings|Busters Character|ADS")
+	float ADSMaxWalkSpeedCrouched;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Settings|Busters Character|ADS")
 	float SmoothCameraSpeed = 5.0f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Settings|Busters Character|ADS")
@@ -94,14 +112,16 @@ protected:
 	bool bADS = false;
 	bool bDesiredADS = false;
 
+	//
 	// Sway
+	// 
 	FRotator SwayFinalRotation;
 	FRotator SwayInitialRotation;
-	
+
 	// 유저가 마우스를 이용해 화면을 회전시킬 때 총을 움직여주는 Sway 관련
 	float SwayPitch = 0.f;
 	float SwayYaw = 0.f;
-	FVector SwayForward{0.f, 0.f, 0.f};
+	FVector SwayForward{ 0.f, 0.f, 0.f };
 	FVector SwayRight{ 0.f, 0.f, 0.f };
 
 	// 캐릭터가 이동할 때 총을 움직여주는  Sway 관련
@@ -112,10 +132,8 @@ protected:
 	float SwayMovingSpeed = 2.5f;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Settings|Busters Character|Sway")
 	float SwayMovingRange = 10.f;
-	
+
 	float SwayMovingTime = 0.f;
-
-
 
 public:
 	ABustersCharacter();
@@ -141,7 +159,9 @@ private:
 
 	void InputMove(const FInputActionValue& ActionValue);
 
-	void InputRun(const FInputActionValue& ActionValue);
+	void InputWalk(const FInputActionValue& ActionValue);
+
+	void InputSprint(const FInputActionValue& ActionValue);
 
 	void InputCrouch();
 
@@ -163,6 +183,8 @@ private:
 	void MovingSway(float DeltaTime);
 
 public:
+	void OnFireWeapon();
+
 	UFUNCTION()
 	void BuyWeapon(TSubclassOf<AWeapon> BoughtWeapon);
 	UFUNCTION(Server, Reliable)
@@ -176,5 +198,10 @@ public:
 
 	UFUNCTION(Server, Reliable)
 	void ServerEquipWeapon(TSubclassOf<AWeapon> WeaponToEquip);
+
+public:
+	inline TObjectPtr<USkeletalMeshComponent> GetOverlaySkeletalMesh() { return OverlaySkeletalMesh; };
+	inline TObjectPtr<USkeletalMeshComponent> GetADSSkeletalMesh() { return ADSSkeletalMesh; };
+	inline bool GetADS() { return bADS; };
 
 };
