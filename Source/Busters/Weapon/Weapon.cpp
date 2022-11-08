@@ -3,9 +3,13 @@
 
 #include "Weapon.h"
 
+#include "Busters/Character/BustersCharacter.h"
+#include "Busters/Weapon/WeaponTypes.h"
 #include "Camera/CameraComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/WidgetComponent.h"
+#include "Engine/SkeletalMeshSocket.h"
+#include "Kismet/KismetSystemLibrary.h"
 
 // Sets default values
 AWeapon::AWeapon()
@@ -25,7 +29,6 @@ AWeapon::AWeapon()
 
 	PickUpWidget = CreateDefaultSubobject<UWidgetComponent>(TEXT("PickUpWidget"));
 	PickUpWidget->SetupAttachment(RootComponent);
-	
 }
 
 // Called when the game starts or when spawned
@@ -33,6 +36,13 @@ void AWeapon::BeginPlay()
 {
 	Super::BeginPlay();
 	
+}
+
+void AWeapon::Fire(const FVector& HitTarget, const bool bADS)
+{
+	TObjectPtr<APawn> OwnerPawn = Cast<APawn>(GetOwner());
+	if (OwnerPawn == nullptr) return;
+
 }
 
 // Called every frame

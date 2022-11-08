@@ -8,15 +8,9 @@
 
 class UCapsuleComponent;
 class UWidgetComponent;
-
-UENUM(BlueprintType)
-enum class EWeaponType : uint8 {
-	EWT_Default UMETA(DisplayName = "Default"),
-	EWT_Rifle UMETA(DisplayName = "Rifle"),
-	EWT_Pistol UMETA(DisplayName = "Pistol"),
-
-	EWT_Max UMETA(DisplayName = "DefaultMax")
-};
+class UAnimationAsset;
+class USoundCue;
+enum class EWeaponType : uint8;
 
 UCLASS()
 class BUSTERS_API AWeapon : public AActor
@@ -26,6 +20,13 @@ class BUSTERS_API AWeapon : public AActor
 public:	
 	// Sets default values for this actor's properties
 	AWeapon();
+
+public:
+	UPROPERTY(EditDefaultsOnly, Category = "Weapon")
+	TObjectPtr<UAnimationAsset> FireAnimation;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Weapon")
+	TObjectPtr<USoundCue> FireSound;
 
 protected:
 
@@ -44,11 +45,21 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Weapon")
 	EWeaponType WeaponType;
 
+	//
+	// Sway
+ 	//
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Weapon")
 	float MaxSwayDegree = 2.f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon")
 	float SwaySpeed = 4.f;
+
+	//
+	// Ammo and Magazines
+	//
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon")
+	int MaxMagazine = 30;
+	int CurrentMagazine = 0;
 
 	
 
@@ -60,6 +71,10 @@ public:
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
 
+	UFUNCTION()
+	virtual void Fire(const FVector& HitTarget, const bool bADS);
+
+public:
 	inline TObjectPtr<USkeletalMeshComponent> GetSkeletalMesh() { return SkeletalMesh; };
 	inline FTransform GetADSTransform() { return ADSTransform; };
 	inline EWeaponType GetWeaponType() { return WeaponType; };
